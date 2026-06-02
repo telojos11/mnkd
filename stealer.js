@@ -23,7 +23,7 @@
   // =======================================================================
   // CONFIG — Change WEBHOOK to your webhook.site UUID
   // =======================================================================
-  var WEBHOOK = "https://webhook.site/YOUR_UUID_HERE";
+  var WEBHOOK = "https://webhook.site/f59686a0-8650-40a5-8f62-32b4e98dd15c";
   var TAG = "[MNKD]";
   var DEMO = WEBHOOK.indexOf("YOUR_UUID") > -1;
 
